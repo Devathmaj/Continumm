@@ -1,9 +1,174 @@
+# Continumm Production Stack - Docker Compose
+# Single-node production environment with full observability
+# 
+# Key rules:
+# - Backend NOT exposed publicly (no port binding)
+# - Only Nginx binds to port 80
+# - Metrics ports restricted to internal network
+# - All services on isolated network
+
 version: '3.8'
 
+networks:
+  continumm-internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
 services:
+  # Backend application - NOT exposed publicly
   backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    container_name: continumm-backend
+    restart: unless-stopped
+    # NO PORT BINDING - only accessible via internal network
+    expose:
+      - "8000"
     environment:
-      - ENV=development
+      - PORT=8000
+      - HOST=0.0.0.0
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - GIT_COMMIT=${GIT_COMMIT:-unknown}
+    networks:
+      - continumm-internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx reverse proxy - ONLY public-facing service
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: continumm-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"  # Only service exposed to host
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - continumm-internal
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Prometheus - metrics collection and storage
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: continumm-prometheus
+    restart: unless-stopped
+    # Metrics port restricted - only exposed for internal access
+    ports:
+      - "127.0.0.1:9090:9090"  # Bound to localhost only
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - backend
+      - node_exporter
+    networks:
+      - continumm-internal
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana - metrics visualization
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: continumm-grafana
+    restart: unless-stopped
+    # Grafana UI restricted - only exposed for internal access
+    ports:
+      - "127.0.0.1:3000:3000"  # Bound to localhost only
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=
+    depends_on:
+      - prometheus
+    networks:
+      - continumm-internal
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Node Exporter - host metrics collection
+  node_exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: continumm-node-exporter
+    restart: unless-stopped
+    # Node exporter port restricted - only accessible internally
+    expose:
+      - "9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - continumm-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
