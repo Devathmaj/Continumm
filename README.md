@@ -201,6 +201,23 @@ docker-compose logs -f backend
 - [x] Metrics ports restricted
 - [x] Complete "mini production" environment
 
+### Step 5: Reverse Proxy (Nginx)
+- [x] Zero-downtime reloads with graceful reload scripts
+- [x] Health-aware routing with automatic failover
+- [x] Explicit timeout configuration (5s connect, 60s read/send)
+- [x] Retry logic for failed upstream requests
+- [x] Rate limiting and security headers
+- [x] Blast radius control
+
+### Step 6: Infrastructure as Code (Terraform)
+- [x] VM provisioning (Azure Ubuntu 22.04)
+- [x] Security groups (SSH, HTTP, HTTPS)
+- [x] SSH key-based authentication (no passwords)
+- [x] Disk configuration (OS + Data disk)
+- [x] Cloud-init automated setup (Docker, system tuning)
+- [x] No manual setup - terraform apply creates working VM
+- [x] 100% reproducible infrastructure
+
 ## 🔒 Production-Ready Features
 
 - **Immutable Deployments**: Git SHA tagged images
@@ -221,6 +238,16 @@ docker-compose logs -f backend
 - [ ] Implement backup strategy
 - [ ] Add SSL/TLS termination
 - [ ] Scale to multi-node with Kubernetes
+
+## 📚 Additional Documentation
+
+- [Backend Implementation](backend/README.md) - Service details
+- [Deployment Guide](deploy/README.md) - Complete stack deployment  
+- [Nginx Configuration](deploy/NGINX.md) - Zero-downtime and health-aware routing
+- [Terraform Guide](infra/terraform/README.md) - Infrastructure provisioning
+- [Implementation Summary](IMPLEMENTATION.md) - Detailed technical overview
+- [Steps 5 & 6](STEPS_5_6.md) - Nginx and Terraform implementation
+- [Quick Reference](QUICKSTART.md) - Common commands
 
 ## 📄 License
 
