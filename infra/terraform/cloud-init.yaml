@@ -1,0 +1,178 @@
+#cloud-config
+# Cloud-init configuration for Continumm VM
+# Automatically sets up Docker, Docker Compose, and system configuration
+
+# System updates and package installation
+package_update: true
+package_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - git
+  - vim
+  - htop
+  - ufw
+  - python3-pip
+
+# Docker installation
+runcmd:
+  # Install Docker
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io
+  
+  # Install Docker Compose
+  - curl -L "https://github.com/docker/compose/releases/download/v${docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  - chmod +x /usr/local/bin/docker-compose
+  - ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+  
+  # Add user to docker group
+  - usermod -aG docker ${admin_username}
+  
+  # Enable and start Docker
+  - systemctl enable docker
+  - systemctl start docker
+  
+  # Configure firewall (UFW)
+  - ufw --force enable
+  - ufw allow 22/tcp    # SSH
+  - ufw allow 80/tcp    # HTTP
+  - ufw allow 443/tcp   # HTTPS
+  
+  # Set up data disk mount point (if data disk exists)
+  - mkdir -p /mnt/data
+  - echo "Data disk will be mounted at /mnt/data"
+  
+  # Configure Docker to use data disk for storage
+  - mkdir -p /etc/docker
+  - |
+    cat > /etc/docker/daemon.json <<EOF
+    {
+      "log-driver": "json-file",
+      "log-opts": {
+        "max-size": "10m",
+        "max-file": "3"
+      },
+      "storage-driver": "overlay2"
+    }
+    EOF
+  - systemctl restart docker
+  
+  # Set timezone
+  - timedatectl set-timezone UTC
+  
+  # Create application directory
+  - mkdir -p /opt/continumm
+  - chown ${admin_username}:${admin_username} /opt/continumm
+  
+  # Set up log directory
+  - mkdir -p /var/log/continumm
+  - chown ${admin_username}:${admin_username} /var/log/continumm
+  
+  # Install monitoring tools
+  - apt-get install -y sysstat iotop iftop
+  
+  # Set up automatic security updates
+  - apt-get install -y unattended-upgrades
+  - dpkg-reconfigure -plow unattended-upgrades
+
+# System configuration
+write_files:
+  # Docker daemon configuration
+  - path: /etc/systemd/system/docker.service.d/override.conf
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+    owner: root:root
+    permissions: '0644'
+  
+  # Logrotate configuration for application logs
+  - path: /etc/logrotate.d/continumm
+    content: |
+      /var/log/continumm/*.log {
+        daily
+        rotate 7
+        compress
+        delaycompress
+        missingok
+        notifempty
+        create 0640 ${admin_username} ${admin_username}
+      }
+    owner: root:root
+    permissions: '0644'
+  
+  # System limits for containers
+  - path: /etc/security/limits.d/continumm.conf
+    content: |
+      * soft nofile 65536
+      * hard nofile 65536
+      * soft nproc 32768
+      * hard nproc 32768
+    owner: root:root
+    permissions: '0644'
+  
+  # Sysctl tuning
+  - path: /etc/sysctl.d/99-continumm.conf
+    content: |
+      # Network performance tuning
+      net.core.somaxconn = 32768
+      net.ipv4.tcp_max_syn_backlog = 8192
+      net.ipv4.ip_local_port_range = 1024 65535
+      
+      # File system tuning
+      fs.file-max = 2097152
+      
+      # Memory management
+      vm.swappiness = 10
+      vm.dirty_ratio = 15
+      vm.dirty_background_ratio = 5
+    owner: root:root
+    permissions: '0644'
+  
+  # Welcome message
+  - path: /etc/motd
+    content: |
+      ╔═══════════════════════════════════════════════════════════╗
+      ║                                                           ║
+      ║           Continumm Production Server                    ║
+      ║           Provisioned by Terraform                       ║
+      ║                                                           ║
+      ║  Application directory: /opt/continumm                   ║
+      ║  Log directory: /var/log/continumm                       ║
+      ║  Data directory: /mnt/data                               ║
+      ║                                                           ║
+      ║  Installed software:                                     ║
+      ║    - Docker + Docker Compose                             ║
+      ║    - Git                                                 ║
+      ║    - Python 3                                            ║
+      ║    - Monitoring tools (htop, sysstat)                    ║
+      ║                                                           ║
+      ║  Quick commands:                                         ║
+      ║    docker ps                  - Running containers       ║
+      ║    docker-compose logs -f     - View logs                ║
+      ║    htop                       - System monitor           ║
+      ║                                                           ║
+      ╚═══════════════════════════════════════════════════════════╝
+    owner: root:root
+    permissions: '0644'
+
+# System timezone
+timezone: UTC
+
+# Final message
+final_message: |
+  ╔═══════════════════════════════════════════════════════════╗
+  ║                                                           ║
+  ║  Cloud-init setup completed successfully!                ║
+  ║  VM is ready for Continumm deployment                    ║
+  ║                                                           ║
+  ║  System uptime: $UPTIME                                  ║
+  ║  Timestamp: $TIMESTAMP                                   ║
+  ║                                                           ║
+  ╚═══════════════════════════════════════════════════════════╝

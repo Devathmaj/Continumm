@@ -1,0 +1,39 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and customize for your deployment
+# DO NOT commit terraform.tfvars to version control!
+
+# Project configuration
+project_name = "continumm"
+environment  = "production"
+location     = "eastus"
+
+# VM configuration
+vm_size        = "Standard_B2s"    # 2 vCPUs, 4GB RAM
+admin_username = "continumm"
+
+# SSH access configuration
+# REQUIRED: Replace with your actual SSH public key
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... your-key-here"
+
+# Security: Restrict SSH access to specific IPs
+# IMPORTANT: Replace 0.0.0.0/0 with your actual IP addresses in production
+allowed_ssh_ips = [
+  "0.0.0.0/0"  # CHANGE THIS! Example: "203.0.113.0/24", "198.51.100.42/32"
+]
+
+# Disk configuration
+os_disk_type     = "StandardSSD_LRS"
+os_disk_size     = 30
+create_data_disk = true
+data_disk_type   = "StandardSSD_LRS"
+data_disk_size   = 50
+
+# Software versions
+docker_compose_version = "2.24.0"
+
+# Additional tags
+additional_tags = {
+  Owner       = "DevOps"
+  CostCenter  = "Engineering"
+  Application = "Continumm"
+}
