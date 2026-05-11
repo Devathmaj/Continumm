@@ -7,19 +7,19 @@
 # - Metrics ports restricted to internal network
 # - All services on isolated network
 
-version: '3.8'
-
 networks:
   continumm-internal:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.30.0.0/16
 
 volumes:
   prometheus-data:
     driver: local
   grafana-data:
+    driver: local
+  loki-data:
     driver: local
 
 services:
@@ -117,12 +117,12 @@ services:
 
   # Grafana - metrics visualization
   grafana:
-    image: grafana/grafana:10.2.2
+    image: grafana/grafana:latest
     container_name: continumm-grafana
     restart: unless-stopped
     # Grafana UI restricted - only exposed for internal access
     ports:
-      - "127.0.0.1:3000:3000"  # Bound to localhost only
+      - "127.0.0.1:3001:3000"  # Bound to localhost only (port 3001 to avoid conflicts)
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -134,6 +134,7 @@ services:
       - GF_INSTALL_PLUGINS=
     depends_on:
       - prometheus
+      - loki
     networks:
       - continumm-internal
     healthcheck:
@@ -165,6 +166,26 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+    networks:
+      - continumm-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Loki - log aggregation
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: continumm-loki
+    restart: unless-stopped
+    expose:
+      - "3100"
+    command:
+      - "-config.file=/etc/loki/loki.yml"
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
     networks:
       - continumm-internal
     logging:

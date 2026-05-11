@@ -56,7 +56,7 @@ Write-Host "Services:" -ForegroundColor Green
 Write-Host "  Backend:    Internal only (via Nginx)" -ForegroundColor Gray
 Write-Host "  Nginx:      http://localhost" -ForegroundColor Gray
 Write-Host "  Prometheus: http://localhost:9090" -ForegroundColor Gray
-Write-Host "  Grafana:    http://localhost:3000 (admin/changeme)" -ForegroundColor Gray
+Write-Host "  Grafana:    http://localhost:3001 (admin/changeme)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Check status:" -ForegroundColor Yellow
 Write-Host "  docker-compose ps" -ForegroundColor White

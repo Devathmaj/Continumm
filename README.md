@@ -4,17 +4,22 @@ Production-ready backend service with complete observability stack.
 
 ## 🎯 What's Built
 
-A **single-node production environment** with:
+Two environments with separate stacks:
+
+- ✅ **Local Docker stack** for fast testing
+- ✅ **Kubernetes stack** for production-like validation
+
+Each environment includes:
 
 - ✅ **Backend Service** - Flask app with operational endpoints (/health, /metrics, /version)
-- ✅ **Full Observability** - Prometheus metrics collection + Grafana dashboards
+- ✅ **Full Observability** - Prometheus metrics + Grafana dashboards + Loki logs
 - ✅ **Production Docker** - Multi-stage builds, non-root user, immutable tags
 - ✅ **Proper Isolation** - Backend not exposed publicly, only via Nginx
 - ✅ **Real Monitoring** - RPS, p95 latency, error rate, CPU/memory metrics
 
 ## 🚀 Quick Start
 
-### Deploy Everything
+### Local (Docker) Deploy
 
 ```powershell
 # Windows
@@ -27,13 +32,14 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-### Access Services
+### Access Services (Docker)
 
 | Service | URL | Notes |
 |---------|-----|-------|
 | **Backend** | http://localhost | Via Nginx only (backend not exposed) |
 | **Prometheus** | http://localhost:9090 | Metrics collection |
 | **Grafana** | http://localhost:3000 | Dashboards (admin/changeme) |
+| **Loki** | http://localhost:3100 | Logs API (internal use) |
 
 ### Verify Everything Works
 
@@ -63,7 +69,7 @@ Public Internet
       ↓
    Backend:8000 (Internal only)
       ↓
-   Prometheus:9090 → Grafana:3000
+   Prometheus:9090 → Grafana:3000 → Loki:3100
       ↑
    Node Exporter (host metrics)
 ```
@@ -72,7 +78,7 @@ Public Internet
 
 - ✅ Backend **NOT exposed** to host - only via internal Docker network
 - ✅ Nginx **ONLY service** on port 80
-- ✅ Prometheus/Grafana bound to **localhost only**
+- ✅ Prometheus/Grafana/Loki bound to **localhost only**
 - ✅ Metrics ports **restricted**
 
 ## 📁 Structure
@@ -95,6 +101,9 @@ deploy/
 │   └── prometheus.yml     # Scrape configuration
 ├── grafana/
 │   └── provisioning/      # Auto-configured datasources + dashboards
+├── loki/
+│   └── loki.yml            # Loki configuration
+└── k8s/                    # Kubernetes manifests (separate stack)
 └── README.md              # Deployment documentation
 
 infra/
@@ -120,6 +129,7 @@ infra/
 ### Observability Stack
 - **Prometheus**: Scrapes backend + node_exporter every 10-15s
 - **Grafana**: Pre-configured dashboards with key metrics
+- **Loki**: Centralized log storage with Grafana datasource
 - **Node Exporter**: Host-level CPU, memory, disk metrics
 - **Static Config**: Simple, no service discovery needed
 
@@ -168,6 +178,7 @@ docker-compose logs -f backend
 
 - [Backend README](backend/README.md) - Service implementation details
 - [Deploy README](deploy/README.md) - Complete deployment guide
+- [Kubernetes Manifests](deploy/k8s/README.md) - K8s apply and access
 
 ## ✅ Deliverables Checklist
 
@@ -190,12 +201,12 @@ docker-compose logs -f backend
 ### Step 3: Observability Stack
 - [x] Prometheus scrapes backend
 - [x] Prometheus scrapes node_exporter
-- [x] Static configuration
+- [x] Loki for log aggregation
 - [x] Grafana dashboard with RPS, p95 latency, error rate, CPU/memory
 - [x] Metrics validation (if they don't make sense, app is lying)
 
 ### Step 4: Docker Compose
-- [x] Services: backend, nginx, prometheus, grafana, node_exporter
+- [x] Services: backend, nginx, prometheus, grafana, loki, node_exporter
 - [x] Backend not exposed publicly
 - [x] Only Nginx binds to port 80
 - [x] Metrics ports restricted
@@ -238,6 +249,33 @@ docker-compose logs -f backend
 - [ ] Implement backup strategy
 - [ ] Add SSL/TLS termination
 - [ ] Scale to multi-node with Kubernetes
+
+## ☸️ Kubernetes Runbook
+
+Use this to deploy the Kubernetes stack (separate from Docker Compose):
+
+```bash
+docker build -t continumm-backend:latest ./backend
+
+# For kind:
+kind load docker-image continumm-backend:latest
+
+# For minikube:
+# minikube image load continumm-backend:latest
+
+kubectl apply -k deploy/k8s
+```
+
+Access:
+- App via Ingress: http://continumm.local (map to your ingress IP)
+- Prometheus:
+   ```bash
+   kubectl -n continumm port-forward svc/prometheus 9090:9090
+   ```
+- Grafana:
+   ```bash
+   kubectl -n continumm port-forward svc/continumm-grafana 3000:3000
+   ```
 
 ## 📚 Additional Documentation
 

@@ -1,0 +1,58 @@
+### Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.tox/
+*.log
+
+### Flask/Gunicorn
+*.pid
+*.pid.lock
+gunicorn.log
+
+### Docker
+.env
+.env.*
+docker-compose.override.yml
+
+### Kubernetes
+*.kubeconfig
+
+### Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+### Ansible
+*.retry
+
+### OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
