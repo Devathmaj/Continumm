@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-telemetry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-telemetry
+  template:
+    metadata:
+      labels:
+        app: backend-telemetry
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+        - name: backend-telemetry
+          image: continumm-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: GIT_COMMIT
+              value: "unknown"
+            - name: TELEMETRY_ENABLED
+              value: "true"
+            - name: TELEMETRY_DISABLE_LEADER_LOCK
+              value: "true"
+          args:
+            - "--bind"
+            - "0.0.0.0:8000"
+            - "--workers"
+            - "1"
+            - "--timeout"
+            - "120"
+            - "--access-logfile"
+            - "-"
+            - "--error-logfile"
+            - "-"
+            - "--log-level"
+            - "info"
+            - "app:app"
+          command:
+            - "gunicorn"
+          envFrom:
+            - configMapRef:
+                name: telemetry-config
+            - secretRef:
+                name: postgres-credentials
+            - secretRef:
+                name: snmp-credentials
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              add:
+                - NET_RAW
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

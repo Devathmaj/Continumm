@@ -11,6 +11,10 @@ spec:
     metadata:
       labels:
         app: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
     spec:
       containers:
         - name: backend
@@ -29,6 +33,20 @@ spec:
               value: "INFO"
             - name: GIT_COMMIT
               value: "unknown"
+            - name: TELEMETRY_ENABLED
+              value: "false"
+          envFrom:
+            - configMapRef:
+                name: telemetry-config
+            - secretRef:
+                name: postgres-credentials
+            - secretRef:
+                name: snmp-credentials
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
           livenessProbe:
             httpGet:
               path: /health

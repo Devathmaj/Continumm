@@ -1,0 +1,45 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: continumm-network-alerts
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: continumm-network-alerts
+      rules:
+        - alert: NetworkDeviceOffline
+          expr: network_device_online == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Device offline"
+            description: "{{ $labels.ip }} is offline"
+
+        - alert: NetworkLatencyHigh
+          expr: network_device_latency_ms > 200
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency"
+            description: "{{ $labels.ip }} latency above 200ms"
+
+        - alert: NetworkPacketLossHigh
+          expr: network_device_packet_loss_percent > 20
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Packet loss"
+            description: "{{ $labels.ip }} packet loss above 20%"
+
+        - alert: NetworkDeviceFlapping
+          expr: changes(network_device_online[10m]) > 4
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Device flapping"
+            description: "{{ $labels.ip }} toggled online/offline frequently"

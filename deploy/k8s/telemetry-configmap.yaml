@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-config
+data:
+  TELEMETRY_ENABLED: "true"
+  SCAN_SUBNETS: "192.168.18.0/24"
+  DISCOVERY_INTERVAL_SECONDS: "300"
+  POLL_INTERVAL_SECONDS: "30"
+  PORT_SCAN_ENABLED: "true"
+  PORT_SCAN_TOP_PORTS: "50"
+  PORT_SCAN_LIMIT: "25"
+  SCAN_USE_ARP: "true"
+  SCAN_USE_SCAPY: "false"
+  SCAN_USE_NMAP: "true"
+  NMAP_DISABLE_ARP_PING: "true"
+  ALERT_OFFLINE_AFTER: "3"
+  ALERT_LATENCY_MS: "200"
+  ALERT_PACKET_LOSS_PERCENT: "20"
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
+  OTEL_SERVICE_NAME: "continumm-backend"

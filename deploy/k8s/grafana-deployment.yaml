@@ -47,6 +47,8 @@ spec:
                 path: dashboards/dashboard.yml
               - key: continumm-backend.json
                 path: dashboards/continumm-backend.json
+              - key: continumm-network.json
+                path: dashboards/continumm-network.json
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

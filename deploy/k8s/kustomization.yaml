@@ -3,8 +3,14 @@ kind: Kustomization
 namespace: continumm
 resources:
   - namespace.yaml
+  - telemetry-configmap.yaml
+  - postgres-secret.yaml
+  - snmp-secret.yaml
+  - postgres-deployment.yaml
   - backend-deployment.yaml
   - backend-service.yaml
+  - backend-telemetry-deployment.yaml
+  - backend-telemetry-service.yaml
   - nginx-configmap.yaml
   - nginx-deployment.yaml
   - nginx-service.yaml
@@ -12,6 +18,12 @@ resources:
   - prometheus-configmap.yaml
   - prometheus-deployment.yaml
   - prometheus-service.yaml
+  - alertmanager-configmap.yaml
+  - alertmanager-deployment.yaml
+  - alertmanager-service.yaml
+  - tempo-configmap.yaml
+  - tempo-deployment.yaml
+  - tempo-service.yaml
   - grafana-configmap.yaml
   - grafana-deployment.yaml
   - grafana-service.yaml

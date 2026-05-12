@@ -21,6 +21,8 @@ volumes:
     driver: local
   loki-data:
     driver: local
+  postgres-data:
+    driver: local
 
 services:
   # Backend application - NOT exposed publicly
@@ -41,8 +43,26 @@ services:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
       - GIT_COMMIT=${GIT_COMMIT:-unknown}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://continumm:continumm@postgres:5432/continumm}
+      - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-false}
+      - SCAN_SUBNETS=${SCAN_SUBNETS:-}
+      - DISCOVERY_INTERVAL_SECONDS=${DISCOVERY_INTERVAL_SECONDS:-300}
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-30}
+      - PORT_SCAN_ENABLED=${PORT_SCAN_ENABLED:-false}
+      - PORT_SCAN_TOP_PORTS=${PORT_SCAN_TOP_PORTS:-50}
+      - PORT_SCAN_LIMIT=${PORT_SCAN_LIMIT:-25}
+      - SCAN_USE_ARP=${SCAN_USE_ARP:-true}
+      - SCAN_USE_SCAPY=${SCAN_USE_SCAPY:-false}
+      - SCAN_USE_NMAP=${SCAN_USE_NMAP:-true}
+      - ALERT_OFFLINE_AFTER=${ALERT_OFFLINE_AFTER:-3}
+      - ALERT_LATENCY_MS=${ALERT_LATENCY_MS:-200}
+      - ALERT_PACKET_LOSS_PERCENT=${ALERT_PACKET_LOSS_PERCENT:-20}
+      - OTEL_ENABLED=${OTEL_ENABLED:-false}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
     networks:
       - continumm-internal
+    depends_on:
+      - postgres
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -90,6 +110,7 @@ services:
       - "127.0.0.1:9090:9090"  # Bound to localhost only
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -99,7 +120,9 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
     depends_on:
+      - postgres
       - backend
+      - alertmanager
       - node_exporter
     networks:
       - continumm-internal
@@ -135,6 +158,7 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
     networks:
       - continumm-internal
     healthcheck:
@@ -193,3 +217,49 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: continumm-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-continumm}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-continumm}
+      - POSTGRES_DB=${POSTGRES_DB:-continumm}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - continumm-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-continumm}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: continumm-alertmanager
+    restart: unless-stopped
+    expose:
+      - "9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    networks:
+      - continumm-internal
+
+  tempo:
+    image: grafana/tempo:2.4.0
+    container_name: continumm-tempo
+    restart: unless-stopped
+    expose:
+      - "3200"
+      - "4317"
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo.yml:ro
+    command:
+      - "-config.file=/etc/tempo.yml"
+    networks:
+      - continumm-internal

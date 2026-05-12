@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      receiver: default
+      group_by: ["alertname", "ip"]
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 3h
+
+    receivers:
+      - name: default
+        # Add webhook/email/slack configs as needed

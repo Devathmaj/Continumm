@@ -1,272 +1,192 @@
-# Continumm Backend - Production-Ready Service
+<![CDATA[# Continumm Backend
 
-## ✅ Step 1: Backend Service - COMPLETE
+Production-ready Python backend providing REST APIs for network device inventory, telemetry data, and alerting, with built-in Prometheus metrics, structured JSON logging, and OpenTelemetry tracing.
 
-### Operational Endpoints
+---
 
-#### `/health` - Health Check
-- **Returns**: `200 OK` when all dependencies are healthy, `503` when unhealthy
-- **Response Format**:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-12-28T05:58:19.758580Z",
-  "checks": {
-    "application": "healthy"
-  }
-}
+## Responsibilities
+
+- Serve REST API endpoints for device inventory, telemetry metrics, and alerts
+- Expose Prometheus metrics at `/metrics` for scraping
+- Run background telemetry workers (subnet discovery + device health polling)
+- Manage PostgreSQL schema via SQLAlchemy ORM
+- Emit structured JSON logs to stdout for Loki ingestion
+- Export OpenTelemetry traces to Tempo (optional)
+
+---
+
+## Internal Architecture
+
+```
+backend/
+├── app/
+│   ├── app.py              # Flask app, routes, middleware, metrics, tracing
+│   ├── config.py           # Environment-driven Config singleton
+│   ├── db.py               # SQLAlchemy engine, session manager, leader lock
+│   ├── models.py           # ORM: Device, DevicePort, DeviceStatus, AlertEvent, ScanRun
+│   └── telemetry/
+│       ├── __init__.py
+│       ├── service.py      # TelemetryService: async orchestrator (discovery + polling loops)
+│       ├── discovery.py    # ARP table, scapy ARP, nmap discovery + port enrichment
+│       ├── monitoring.py   # ICMP ping parsing, HTTP probes
+│       └── metrics.py      # Prometheus gauge/counter/histogram definitions
+├── tests/                  # Test directory
+├── Dockerfile              # Multi-stage: builder → runtime (non-root)
+├── requirements.txt        # Pinned dependencies
+├── .env.example            # Environment template
+├── .dockerignore           # Build context exclusions
+├── build.ps1 / build.sh    # Docker build scripts with git SHA tagging
+└── verify.ps1              # Implementation verification checklist
 ```
 
-#### `/metrics` - Prometheus Metrics
-- **Returns**: Prometheus-formatted metrics
-- **Metrics Exposed**:
-  - `request_total` - Counter for total requests by method, endpoint, and status
-  - `request_duration_seconds_bucket` - Histogram for request latency
-  - `error_total` - Counter for errors by method, endpoint, and error type
+### Request Lifecycle
 
-#### `/version` - Version Information
-- **Returns**: Git commit hash and environment info
-- **Response Format**:
-```json
-{
-  "version": "04f994e...",
-  "commit": "04f994e...",
-  "environment": "development",
-  "timestamp": "2025-12-28T05:58:19.758580Z"
-}
-```
+1. Nginx forwards request to `backend:8000` on the internal network
+2. `before_request` middleware generates a `request_id` and records start time
+3. Flask route handler executes, querying PostgreSQL via `get_session()` context manager
+4. `after_request` middleware records Prometheus metrics and emits a structured JSON log entry
+5. If OpenTelemetry is enabled, the current span's `trace_id` and `span_id` are included in the log
 
-### Hard Requirements - IMPLEMENTED
+### Telemetry Service Lifecycle
 
-✅ **Structured Logging (JSON)**
-- All logs output in JSON format with timestamp, level, message, and context
-- Request tracking with request_id, duration, status code
-- Example log:
-```json
-{
-  "timestamp": "2025-12-28T05:58:19.758580Z",
-  "level": "INFO",
-  "message": "GET /health 200",
-  "logger": "continumm",
-  "request_id": "a1b2c3d4e5f6g7h8",
-  "path": "/health",
-  "method": "GET",
-  "status_code": 200,
-  "duration": 0.0042
-}
-```
+1. On startup, `TelemetryService.start()` spawns a daemon thread
+2. The thread runs `asyncio.run()` with two concurrent tasks: `_discovery_loop` and `_polling_loop`
+3. In K8s multi-replica scenarios, only the pod that acquires the PostgreSQL advisory lock runs telemetry
+4. On SIGTERM/SIGINT, `GracefulShutdown` stops the service and releases the lock
 
-✅ **Config Only via Environment Variables**
-- `PORT` - Server port (default: 8000)
-- `HOST` - Bind address (default: 0.0.0.0)
-- `ENVIRONMENT` - Environment name (default: development)
-- `LOG_LEVEL` - Logging level (default: INFO)
-- `GIT_COMMIT` - Git commit hash (populated during build)
+---
 
-✅ **Clean Startup and Shutdown**
-- Signal handlers for SIGTERM and SIGINT
-- Graceful shutdown with proper cleanup
-- Structured logging for lifecycle events
+## Dependencies
 
-## ✅ Step 2: Containerization - COMPLETE
+| Package | Version | Purpose |
+|---------|---------|---------|
+| Flask | 2.3.3 | Web framework |
+| Gunicorn | 21.2.0 | Production WSGI server |
+| SQLAlchemy | 2.0.30 | ORM and database management |
+| psycopg2-binary | 2.9.9 | PostgreSQL driver |
+| prometheus-client | 0.19.0 | Metrics instrumentation |
+| aiohttp | 3.9.5 | Async HTTP client (probes) |
+| scapy | 2.5.0 | Optional ARP scanning |
+| opentelemetry-sdk | 1.25.0 | Distributed tracing |
+| opentelemetry-instrumentation-flask | 0.46b0 | Flask auto-instrumentation |
+| opentelemetry-exporter-otlp | 1.25.0 | OTLP trace export |
 
-### Dockerfile Features
+---
 
-✅ **Multi-Stage Build**
-- Stage 1 (builder): Install dependencies in virtual environment
-- Stage 2 (runtime): Minimal runtime image with only necessary files
-- Reduces final image size and attack surface
+## API Endpoints
 
-✅ **Non-Root User**
-- Application runs as user `appuser` (UID 1000)
-- No root privileges in container
+### Operational
 
-✅ **Explicit EXPOSE**
-- Port 8000 explicitly exposed in Dockerfile
-- No ambiguity about which port the service uses
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `/` | GET | Service info | None |
+| `/health` | GET | Dependency health (200/503) | None |
+| `/metrics` | GET | Prometheus metrics | None |
+| `/version` | GET | Git commit + environment | None |
 
-✅ **No Shell Scripts Doing "Magic"**
-- Direct gunicorn command in CMD
-- Git commit passed as build argument
-- Clean, transparent container behavior
+### Telemetry
 
-### Immutable Images with Git SHA Tagging
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/devices` | GET | List devices (query: `limit`) |
+| `/api/devices/<id>` | GET | Single device with ports + status |
+| `/api/devices/<id>/metrics` | GET | Device telemetry time series (query: `limit`) |
+| `/api/alerts` | GET | Alert feed (query: `limit`) |
+| `/api/telemetry/overview` | GET | Summary: device count, last scan, last alert |
 
-**Build Script** (Windows PowerShell):
-```powershell
-.\build.ps1
-```
+All endpoints return JSON. Database-dependent endpoints return `503` with `{"error": "database_unavailable"}` if PostgreSQL is unreachable.
 
-**Build Script** (Linux/Mac):
+---
+
+## Environment Variables
+
+See the [root README environment variables section](../README.md#environment-variables) for the complete table.
+
+Key variables: `PORT`, `HOST`, `DATABASE_URL`, `TELEMETRY_ENABLED`, `SCAN_SUBNETS`, `OTEL_ENABLED`.
+
+---
+
+## Local Development
+
+### Without Docker
+
 ```bash
-./build.sh
+cd backend
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows
+.\.venv\Scripts\activate
+
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env as needed
+
+python app/app.py
+# Listening on http://localhost:8000
 ```
 
-Both scripts:
-1. Get current git commit hash
-2. Pass it as build argument
-3. Tag image with git SHA (short form)
-4. Also tag as `latest` for convenience
+### With Docker
 
-**Example**:
-- `continumm-backend:04f994e` (immutable, tied to specific commit)
-- `continumm-backend:latest` (convenience tag)
-
-### Running the Container
-
-**Local Development**:
 ```powershell
-docker run -p 8000:8000 `
-  -e ENVIRONMENT=development `
-  -e LOG_LEVEL=DEBUG `
-  continumm-backend:04f994e
+cd backend
+.\build.ps1             # Builds continumm-backend:<git-sha> + :latest
+docker run -p 8000:8000 continumm-backend:latest
 ```
 
-**Production**:
-```powershell
-docker run -d `
-  --name continumm-backend `
-  -p 8000:8000 `
-  -e ENVIRONMENT=production `
-  -e LOG_LEVEL=INFO `
-  --restart unless-stopped `
-  continumm-backend:04f994e
+### Testing
+
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/metrics
+curl http://localhost:8000/version
 ```
+
+---
+
+## Docker Image
+
+### Multi-Stage Build
+
+- **Stage 1 (builder):** Installs dependencies into `/opt/venv`
+- **Stage 2 (runtime):** Copies venv + app code, installs `nmap` + `ping`, sets capabilities
+
+### Security
+
+- Runs as `appuser` (UID 1000), not root
+- `cap_net_raw` granted to `ping` and `nmap` only
+- Build context filtered by `.dockerignore`
 
 ### Health Check
 
-Container includes built-in health check:
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 ```
 
-Check health status:
-```powershell
-docker ps
-docker inspect --format='{{.State.Health.Status}}' continumm-backend
-```
+### Build Arguments
 
-## Testing the Service
-
-### Test Endpoints Locally
-
-1. **Start the service**:
-```powershell
-cd backend
-.\.venv\Scripts\python.exe app\app.py
-```
-
-2. **Test health endpoint**:
-```powershell
-curl http://localhost:8000/health
-```
-
-3. **Test metrics endpoint**:
-```powershell
-curl http://localhost:8000/metrics
-```
-
-4. **Test version endpoint**:
-```powershell
-curl http://localhost:8000/version
-```
-
-### Test Docker Container
-
-1. **Build the image**:
-```powershell
-cd backend
-.\build.ps1
-```
-
-2. **Run the container**:
-```powershell
-docker run -p 8000:8000 continumm-backend:latest
-```
-
-3. **Test from host**:
-```powershell
-curl http://localhost:8000/health
-curl http://localhost:8000/metrics
-curl http://localhost:8000/version
-```
-
-4. **Check logs** (should see structured JSON):
-```powershell
-docker logs continumm-backend
-```
-
-## Production Deployment
-
-### Using docker-compose
-
-See [deploy/docker-compose.yml](deploy/docker-compose.yml) for orchestration setup.
-
-### Environment Variables for Production
-
-Create a `.env` file (based on `.env.example`):
-```env
-PORT=8000
-HOST=0.0.0.0
-ENVIRONMENT=production
-LOG_LEVEL=INFO
-```
-
-### Monitoring
-
-- **Health checks**: `GET /health` - Use in load balancers and orchestrators
-- **Metrics**: `GET /metrics` - Scrape with Prometheus
-- **Logs**: Structured JSON logs - Ingest with ELK, Loki, or CloudWatch
-
-### Image Registry
-
-Tag and push to registry:
-```powershell
-$GIT_SHORT = git rev-parse --short HEAD
-docker tag continumm-backend:$GIT_SHORT your-registry.com/continumm-backend:$GIT_SHORT
-docker push your-registry.com/continumm-backend:$GIT_SHORT
-```
-
-## Architecture
-
-```
-backend/
-├── app/
-│   └── app.py              # Main application with all endpoints
-├── Dockerfile              # Multi-stage production build
-├── requirements.txt        # Python dependencies
-├── .dockerignore          # Exclude unnecessary files from build
-├── .env.example           # Environment variable template
-├── build.ps1              # Windows build script
-└── build.sh               # Linux/Mac build script
-```
-
-## Dependencies
-
-- **Flask 2.3.3** - Web framework
-- **prometheus-client 0.19.0** - Metrics collection
-- **gunicorn 21.2.0** - Production WSGI server
-
-## Key Design Decisions
-
-1. **Gunicorn over Flask Dev Server**: Production-ready WSGI server with multiple workers
-2. **JSON Logging**: Structured logs for easy parsing and analysis
-3. **Environment-Based Config**: No config files, all via env vars (12-factor app)
-4. **Multi-Stage Build**: Smaller images, faster deployments
-5. **Non-Root User**: Security best practice
-6. **Git SHA Tagging**: Immutable, traceable deployments
-
-## Next Steps
-
-- [ ] Add database health checks to `/health` endpoint
-- [ ] Add rate limiting
-- [ ] Add authentication/authorization
-- [ ] Add more business logic endpoints
-- [ ] Set up CI/CD pipeline
-- [ ] Configure monitoring and alerting
-- [ ] Add integration tests
+| Arg | Purpose |
+|-----|---------|
+| `GIT_COMMIT` | Baked into `/app/.git_commit` for the `/version` endpoint |
 
 ---
 
-**Status**: ✅ Both Step 1 (Backend Service) and Step 2 (Containerization) are complete and production-ready.
+## Deployment Notes
+
+- In Docker Compose, the backend has **no host port binding**. It is only reachable via Nginx on the internal network.
+- In Kubernetes, two separate Deployments exist: `backend` (API only, multiple replicas) and `backend-telemetry` (single replica with telemetry enabled and leader lock).
+- Gunicorn runs with 4 workers and a 120s timeout.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `/health` returns 503 | Database unreachable | Check `DATABASE_URL` and Postgres container |
+| No telemetry data | `TELEMETRY_ENABLED=false` | Set to `true` and configure `SCAN_SUBNETS` |
+| `nmap binary not found` | nmap not installed | Verify Dockerfile installs nmap |
+| Advisory lock not acquired | Another pod holds the lock | Normal in multi-replica; only one runs telemetry |
+| High memory usage | Too many concurrent pings | Reduce `MAX_CONCURRENT_PINGS` |
+]]>

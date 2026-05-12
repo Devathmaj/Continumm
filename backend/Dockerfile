@@ -18,6 +18,14 @@ FROM python:3.11-slim
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nmap \
+    iputils-ping \
+    libcap2-bin \
+    && setcap cap_net_raw+ep /bin/ping \
+    && setcap cap_net_raw+ep /usr/bin/nmap \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy virtual environment from builder
