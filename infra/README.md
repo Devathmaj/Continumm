@@ -1,4 +1,4 @@
-<![CDATA[# Continumm Infrastructure
+# Continumm Infrastructure
 
 Infrastructure as Code for provisioning and configuring production environments.
 
@@ -54,4 +54,4 @@ http://<VM-IP>:3000     # Grafana
 - Automatic security updates via unattended-upgrades
 
 See [terraform/README.md](terraform/README.md) for detailed configuration and variables.
-]]>
+

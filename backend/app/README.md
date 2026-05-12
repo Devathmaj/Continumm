@@ -1,4 +1,4 @@
-<![CDATA[# Backend Application Internals
+# Backend Application Internals
 
 This directory contains the Flask application source code, telemetry workers, database layer, and configuration.
 
@@ -50,4 +50,4 @@ with get_session() as session:
 ```
 
 This ensures every transaction is committed or rolled back, and the session is always closed.
-]]>
+

@@ -1,4 +1,4 @@
-<![CDATA[# Alertmanager Configuration
+# Alertmanager Configuration
 
 Alertmanager receives firing alerts from Prometheus and handles deduplication, grouping, and routing to notification channels.
 
@@ -39,4 +39,4 @@ Internal only. Check status via:
 ```bash
 docker-compose exec alertmanager wget -qO- http://localhost:9093/api/v2/status
 ```
-]]>
+

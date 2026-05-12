@@ -1,4 +1,4 @@
-<![CDATA[# Loki Configuration
+# Loki Configuration
 
 Loki provides log aggregation for the Continumm stack. Backend structured JSON logs are collected by Docker's log driver and queryable through Grafana.
 
@@ -35,4 +35,4 @@ Loki is internal-only (no host port binding). Query logs via Grafana → Explore
 
 - Docker volume: `loki-data`
 - K8s: emptyDir (ephemeral) or PVC depending on cluster config
-]]>
+

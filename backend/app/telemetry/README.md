@@ -1,4 +1,4 @@
-<![CDATA[# Telemetry Subsystem
+# Telemetry Subsystem
 
 Automated network discovery and device health monitoring. Discovers devices on configured subnets, polls their health continuously, stores results in PostgreSQL, and exports metrics to Prometheus.
 
@@ -105,4 +105,4 @@ All settings come from `config.py`. Key telemetry variables:
 - `DISCOVERY_INTERVAL_SECONDS` — Discovery loop interval (default: 300s)
 - `POLL_INTERVAL_SECONDS` — Polling loop interval (default: 30s)
 - `MAX_CONCURRENT_PINGS` — Async semaphore bound (default: 50)
-]]>
+

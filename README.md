@@ -1,4 +1,4 @@
-<![CDATA[# Continumm
+# Continumm
 
 **Network Telemetry & Observability Platform**
 
@@ -753,4 +753,3 @@ docs(readme): update environment variable table
 ## License
 
 MIT
-]]>

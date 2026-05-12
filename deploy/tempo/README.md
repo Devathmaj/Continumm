@@ -1,4 +1,4 @@
-<![CDATA[# Tempo Configuration
+# Tempo Configuration
 
 Tempo provides distributed trace storage for the Continumm backend. It receives OpenTelemetry traces via OTLP gRPC and makes them queryable through Grafana.
 
@@ -28,4 +28,4 @@ OTEL_SERVICE_NAME=continumm-backend
 ## Access
 
 Internal only. Query traces via Grafana → Explore → Tempo datasource.
-]]>
+

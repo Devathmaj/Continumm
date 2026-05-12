@@ -1,4 +1,4 @@
-<![CDATA[# Continumm — Architecture Documentation
+# Continumm — Architecture Documentation
 
 This document provides a deep-dive into the design, data flows, and component interactions that make up the Continumm platform.
 
@@ -188,4 +188,4 @@ graph TB
 ```
 
 The VM is fully bootstrapped by cloud-init: Docker installed, firewall configured, kernel tuned, application directories created. After provisioning, deploying is `git clone` + `./deploy.sh`.
-]]>
+

@@ -1,4 +1,4 @@
-<![CDATA[# Kubernetes Deployment
+# Kubernetes Deployment
 
 Kustomize-based Kubernetes manifests for deploying the complete Continumm stack into a dedicated namespace.
 
@@ -220,4 +220,4 @@ k8s/
 ├── node-exporter-service.yaml
 └── monitoring-operator/            # Optional kube-prometheus-stack CRDs
 ```
-]]>
+

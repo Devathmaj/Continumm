@@ -1,4 +1,4 @@
-<![CDATA[# Continumm — Operations Runbook
+# Continumm — Operations Runbook
 
 This document covers day-to-day operations, maintenance, and incident response procedures.
 
@@ -301,4 +301,4 @@ cd infra/terraform
 terraform plan    # Review changes
 terraform apply   # Apply changes
 ```
-]]>
+

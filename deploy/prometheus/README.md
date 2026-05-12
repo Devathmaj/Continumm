@@ -1,4 +1,4 @@
-<![CDATA[# Prometheus Configuration
+# Prometheus Configuration
 
 Prometheus scrapes metrics from the backend and Node Exporter, evaluates alert rules, and forwards firing alerts to Alertmanager.
 
@@ -34,4 +34,4 @@ Prometheus scrapes metrics from the backend and Node Exporter, evaluates alert r
 ## Verify Targets
 
 Open http://localhost:9090/targets — all targets should show **UP**.
-]]>
+

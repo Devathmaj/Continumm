@@ -1,4 +1,4 @@
-<![CDATA[# Continumm — Deploy
+# Continumm — Deploy
 
 Complete production deployment stack with Docker Compose orchestration, reverse proxy, and full observability pipeline.
 
@@ -248,4 +248,4 @@ deploy/
 | Grafana dashboard empty | Generate traffic, wait 30s for scrape interval |
 | Services won't start | `docker-compose logs` then `docker-compose down -v && docker-compose up -d` |
 | Disk space issues | `docker system prune -f` and `docker system df` |
-]]>
+

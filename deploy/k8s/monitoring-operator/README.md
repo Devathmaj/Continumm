@@ -1,4 +1,4 @@
-<![CDATA[# Monitoring Operator Resources
+# Monitoring Operator Resources
 
 Optional Kubernetes CRDs for clusters running the [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) Helm chart (Prometheus Operator).
 
@@ -21,4 +21,4 @@ kubectl apply -k deploy/k8s/monitoring-operator
 
 - Prometheus Operator installed (via kube-prometheus-stack Helm chart)
 - CRDs for `ServiceMonitor` and `PrometheusRule` must exist in the cluster
-]]>
+

@@ -1,4 +1,4 @@
-<![CDATA[# Continumm Backend
+# Continumm Backend
 
 Production-ready Python backend providing REST APIs for network device inventory, telemetry data, and alerting, with built-in Prometheus metrics, structured JSON logging, and OpenTelemetry tracing.
 
@@ -189,4 +189,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 | `nmap binary not found` | nmap not installed | Verify Dockerfile installs nmap |
 | Advisory lock not acquired | Another pod holds the lock | Normal in multi-replica; only one runs telemetry |
 | High memory usage | Too many concurrent pings | Reduce `MAX_CONCURRENT_PINGS` |
-]]>
+

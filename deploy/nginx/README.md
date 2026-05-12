@@ -1,4 +1,4 @@
-<![CDATA[# Nginx Reverse Proxy
+# Nginx Reverse Proxy
 
 Nginx serves as the **only public entry point** for the Continumm stack. All external traffic flows through Nginx before reaching the backend.
 
@@ -39,4 +39,4 @@ See [NGINX.md](../NGINX.md) for the full operations guide including reload scrip
 | 502 | Backend is down or starting | `docker-compose logs backend` |
 | 504 | Backend too slow | Increase `proxy_read_timeout` |
 | 429 | Rate limit exceeded | Adjust `rate` and `burst` in config |
-]]>
+

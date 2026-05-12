@@ -1,4 +1,4 @@
-<![CDATA[# Grafana Configuration
+# Grafana Configuration
 
 Grafana provides visualization dashboards for application and network telemetry metrics. It is pre-configured with datasources and dashboards via provisioning — no manual setup required.
 
@@ -41,4 +41,4 @@ grafana/provisioning/
 ## Customization
 
 To add a new dashboard: export JSON from Grafana UI → save to `provisioning/dashboards/` → restart Grafana.
-]]>
+
