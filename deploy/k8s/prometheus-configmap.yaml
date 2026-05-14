@@ -21,6 +21,7 @@ data:
 
     scrape_configs:
       - job_name: 'backend'
+        honor_timestamps: false
         static_configs:
           - targets: ['backend:8000']
             labels:
@@ -31,6 +32,7 @@ data:
         scrape_timeout: 5s
 
       - job_name: 'backend-telemetry'
+        honor_timestamps: false
         static_configs:
           - targets: ['backend-telemetry:8000']
             labels:
@@ -41,6 +43,7 @@ data:
         scrape_timeout: 5s
 
       - job_name: 'node_exporter'
+        honor_timestamps: false
         static_configs:
           - targets: ['node-exporter:9100']
             labels:
@@ -50,6 +53,7 @@ data:
         scrape_timeout: 10s
 
       - job_name: 'prometheus'
+        honor_timestamps: false
         static_configs:
           - targets: ['localhost:9090']
             labels:
@@ -57,6 +61,7 @@ data:
               component: 'monitoring'
 
       - job_name: 'alertmanager'
+        honor_timestamps: false
         static_configs:
           - targets: ['alertmanager:9093']
             labels:
